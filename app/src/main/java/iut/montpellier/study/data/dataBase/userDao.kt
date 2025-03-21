@@ -25,9 +25,12 @@ interface userDao {
     fun getAllUsers():Flow<List<Users>>
 
     @Query("SELECT * FROM Users WHERE email = :email AND password = :password")
-    suspend fun loginUser(email: String, password: String): Users?
+    fun loginUser(email: String, password: String): Users?
 
     @Query("SELECT * FROM Users WHERE email = :email")
     suspend fun getUserByEmail(email: String): Users?
+
+    @Query("SELECT EXISTS(SELECT 1 FROM Users WHERE email = :email AND password = :password)")
+    suspend fun isUserValid(email: String, password: String): Boolean
 
 }

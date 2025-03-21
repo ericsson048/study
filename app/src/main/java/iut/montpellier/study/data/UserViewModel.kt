@@ -16,22 +16,26 @@ import javax.inject.Inject
 
 @HiltViewModel
 class UserViewModel @Inject constructor(
-    val repository: Repository
-) :ViewModel() {
-    private var _state = MutableStateFlow<AppState>(AppState())
+    private val repository: Repository
+) : ViewModel() {
+    private var _state = MutableStateFlow(AppState())
     val allUsers = repository.getAllUsers().stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(),
-        emptyList()
+        initialValue = emptyList()
     )
 
-    var state = combine(_state, allUsers) { _state, users ->
-        _state.copy(allUsers = users)
+    var state = combine(_state, allUsers) { state, users ->
+        state.copy(allUsers = users)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(),
-        AppState()
+        initialValue = AppState()
     )
+
+    // New State for Login
+    private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
+    val loginState = _loginState.asStateFlow() // Expose as read-only StateFlow
 
     fun insertUser() {
         val User = Users(
@@ -42,9 +46,47 @@ class UserViewModel @Inject constructor(
         )
 
         viewModelScope.launch { repository.insertUser(User) }
-
-
     }
+
+    fun loginUser(email: String, password: String) {
+        _loginState.value = LoginState.Loading
+        viewModelScope.launch {
+            try {
+                val isValid = repository.isUserValid(email, password)
+                if (isValid) {
+                    _loginState.value = LoginState.Success
+                } else {
+                    _loginState.value = LoginState.Error("Invalid credentials")
+                }
+            } catch (e: Exception) {
+                _loginState.value = LoginState.Error("An error occurred: ${e.message}")
+            }
+        }
+    }
+
+    fun updateFirstName(newValue:String) {
+        _state.value = _state.value.copy(first_name = mutableStateOf(newValue))
+    }
+
+    fun updateLastName(newValue:String) {
+        _state.value = _state.value.copy(last_name = mutableStateOf(newValue))
+    }
+    fun updateEmail(newValue:String) {
+        _state.value = _state.value.copy(email = mutableStateOf(newValue))
+    }
+
+    fun updatePassWord(newValue:String) {
+        _state.value = _state.value.copy(password = mutableStateOf(newValue))
+    }
+
+}
+
+// New LoginState sealed class
+sealed class LoginState {
+    object Idle : LoginState()
+    object Loading : LoginState()
+    object Success : LoginState()
+    data class Error(val message: String) : LoginState()
 }
 
 data class AppState(

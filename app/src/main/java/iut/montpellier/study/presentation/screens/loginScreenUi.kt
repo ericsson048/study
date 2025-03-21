@@ -10,42 +10,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
-import iut.montpellier.study.R  // Replace with your actual R class
+import iut.montpellier.study.R
 import iut.montpellier.study.data.AppState
+import iut.montpellier.study.data.LoginState
+import iut.montpellier.study.data.UserViewModel
 import iut.montpellier.study.presentation.navigation.Routes
 
-
-//State for Login
-data class LoginScreenState(
-    val email: String = "",
-    val password: String = "",
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val isPasswordVisible: Boolean = false
-)
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-//@Preview(showSystemUi = true, showBackground = true)
+@OptIn(ExperimentalMaterial3Api:: class)
 @Composable
 fun LoginScreenUI(
     state: AppState = AppState(),
-    onEvent: () -> Unit,
-    navController: NavHostController= rememberNavController(),
+    viewModel: UserViewModel,
+    navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Connexion") }
-            )
-        }
-    ) { paddingValues ->
+    val loginState by viewModel.loginState.collectAsState()
+
+    Scaffold { paddingValues ->
         Column(
             modifier = modifier
                 .fillMaxSize()
@@ -61,7 +45,7 @@ fun LoginScreenUI(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    painter = painterResource(R.drawable.logo_edulms), // Replace with your logo
+                    painter = painterResource(R.drawable.logo_edulms),
                     contentDescription = "App Logo",
                     modifier = Modifier
                         .size(90.dp)
@@ -79,8 +63,10 @@ fun LoginScreenUI(
 
             // Email Field
             OutlinedTextField(
-                value = state.email.value,
-                onValueChange = {  state.email.value = it },
+                value = state.email.value, // Access values via state.value
+                onValueChange = {
+                    state.email.value=it
+                },
                 label = { Text("Email") },
                 placeholder = { Text("Enter your email") },
                 modifier = Modifier.fillMaxWidth()
@@ -90,8 +76,10 @@ fun LoginScreenUI(
 
             // Password Field
             OutlinedTextField(
-                value = state.password.value,
-                onValueChange = { state.password.value=it },
+                value = state.password.value, // Access values via state.value
+                onValueChange = {
+                    state.password.value=it
+                },
                 label = { Text("Password") },
                 placeholder = { Text("Enter your password") },
                 modifier = Modifier.fillMaxWidth(),
@@ -102,29 +90,38 @@ fun LoginScreenUI(
             // Login Button
             Button(
                 onClick = {
-                    val user = onEvent()
-
-                          },
+                    viewModel.loginUser(state.email.value, state.password.value)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
             ) {
-                Text(text = "Connection", fontSize = 18.sp)
+                Text(text = "Commencer", fontSize = 18.sp)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            //Inscription Button
+            // Create an account Button
             Button(
-                onClick = {  navController.navigate(Routes.IncriptionScreens)},
+                onClick = { navController.navigate(Routes.Inscription.route) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
             ) {
                 Text(text = "je n'ai pas de compte", fontSize = 18.sp)
             }
-
-
+            when (loginState) {
+                is LoginState.Idle -> {}
+                is LoginState.Loading -> {
+                    CircularProgressIndicator()
+                }
+                is LoginState.Success -> {
+                    navController.navigate(Routes.Home.route)
+                }
+                is LoginState.Error -> {
+                    Text(text = (loginState as LoginState.Error).message)
+                }
+            }
         }
     }
 }
